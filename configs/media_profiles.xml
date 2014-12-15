@@ -289,9 +289,9 @@ does not capture audio
              channels="2" />
     </EncoderProfile>
 
+    <ImageEncoding quality="100" />
+    <ImageEncoding quality="95" />
     <ImageEncoding quality="90" />
-    <ImageEncoding quality="80" />
-    <ImageEncoding quality="70" />
     <ImageDecoding memCap="20000000" />
 
 </CamcorderProfiles>
@@ -509,9 +509,9 @@ does not capture audio
              channels="2" />
     </EncoderProfile>
 
+        <ImageEncoding quality="100" />
+        <ImageEncoding quality="95" />
         <ImageEncoding quality="90" />
-        <ImageEncoding quality="80" />
-        <ImageEncoding quality="70" />
         <ImageDecoding memCap="20000000" />
 
     </CamcorderProfiles>

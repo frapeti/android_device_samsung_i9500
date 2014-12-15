@@ -1,1 +1,1 @@
-add_lunch_combo cm_i9500-userdebug
+add_lunch_combo eos_i9500-userdebug
