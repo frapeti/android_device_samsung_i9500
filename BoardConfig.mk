@@ -48,6 +48,11 @@ BOARD_KERNEL_PAGESIZE := 2048
 TARGET_KERNEL_CONFIG := cyanogenmod_i9500_defconfig
 TARGET_KERNEL_SOURCE := kernel/samsung/exynos5410
 
+# bionic libc options
+ARCH_ARM_USE_MEMCPY_ALIGNMENT := true
+BOARD_MEMCPY_ALIGNMENT := 64
+BOARD_MEMCPY_ALIGN_BOUND := 32768
+
 # ANT+
 BOARD_ANT_WIRELESS_DEVICE := "vfs-prerelease"
 
@@ -68,26 +73,58 @@ TARGET_BOOTANIMATION_TEXTURE_CACHE := true
 TARGET_PROVIDES_CAMERA_HAL := true
 USE_DEVICE_SPECIFIC_CAMERA := true
 BOARD_NEEDS_MEMORYHEAPION := true
-BOARD_USE_STOREMETADATA := true
-BOARD_USE_METADATABUFFERTYPE := true
-BOARD_USE_DMA_BUF := true
-BOARD_USE_ANB_OUTBUF_SHARE := true
-BOARD_USE_GSC_RGB_ENCODER := true
-BOARD_USE_IMPROVED_BUFFER := true
 COMMON_GLOBAL_CFLAGS += -DDISABLE_HW_ID_MATCH_CHECK
 COMMON_GLOBAL_CFLAGS += -DNEEDS_VECTORIMPL_SYMBOLS
 COMMON_GLOBAL_CFLAGS += -DSAMSUNG_CAMERA_HARDWARE
 COMMON_GLOBAL_CFLAGS += -DSAMSUNG_DVFS
+
+# Samsung OpenMAX Video
+BOARD_USE_STOREMETADATA := true
+BOARD_USE_METADATABUFFERTYPE := true
+BOARD_USE_S3D_SUPPORT := true
+BOARD_USE_DMA_BUF := true
+BOARD_USE_ANB_OUTBUF_SHARE := true
+BOARD_USE_GSC_RGB_ENCODER := true
+BOARD_USE_IMPROVED_BUFFER := true
+BOARD_USE_CSC_HW := false
+BOARD_USE_H264_PREPEND_SPS_PPS := false
+BOARD_USE_QOS_CTRL := false
 
 # CMHW
 BOARD_HARDWARE_CLASS += hardware/samsung/cmhw
 
 # Graphics
 USE_OPENGL_RENDERER := true
+BOARD_USES_HGL := true
 BOARD_EGL_CFG := $(LOCAL_PATH)/configs/egl.cfg
 BOARD_EGL_SYSTEMUI_PBSIZE_HACK := true
 BOARD_EGL_WORKAROUND_BUG_10194508 := true
-NUM_FRAMEBUFFER_SURFACE_BUFFERS := 5
+NUM_FRAMEBUFFER_SURFACE_BUFFERS := 3
+EXYNOS4_ENHANCEMENTS := true
+
+# egl cache size : 256 * 1024
+MAX_EGL_CACHE_SIZE := 262144
+
+# Support RSC on PVR
+BOARD_USES_PVR_RSC := true
+
+# FIMG2D
+BOARD_USES_SKIA_FIMGAPI := true
+BOARD_USES_NEON_BLITANTIH := true
+
+#SurfaceFlinger
+BOARD_USES_SYNC_MODE_FOR_MEDIA := true
+
+# HWCServices
+BOARD_USES_HWC_SERVICES := true
+BOARD_USES_PRESENTATION_SUBTITLES := true
+BOARD_USES_CEC := true
+
+# HDMI
+BOARD_USES_GSC_VIDEO := true
+
+# FIMD
+BOARD_USES_FB_PHY_LINEAR := false
 
 # HEALTH DAEMON (CHARGER) DEFINES
 RED_LED_PATH := "/sys/class/leds/led_r/brightness"
@@ -98,6 +135,9 @@ CHARGING_ENABLED_PATH := "/sys/class/power_supply/battery/batt_lp_charging"
 
 # Media
 COMMON_GLOBAL_CFLAGS += -DUSE_NATIVE_SEC_NV12TILED # use format from fw/native
+
+# Widevine
+COMMON_GLOBAL_CFLAGS += -DWIDEVINE_PLUGIN_PRE_NOTIFY_ERROR -DADD_LEGACY_ACQUIRE_BUFFER_SYMBOL
 
 # Radio
 BOARD_PROVIDES_LIBRIL := true
@@ -118,28 +158,17 @@ WIFI_DRIVER_FW_PATH_P2P          := "/system/etc/wifi/bcmdhd_p2p.bin"
 WIFI_BAND                        := 802_11_ABG
 
 # EAP PEAP / AKA / SIM AUTH for WPA_SUPPLICANT_8
-CONFIG_EAP_UNAUTH_TLS            := true
 CONFIG_EAP_TLS                   := true
 CONFIG_EAP_TTLS                  := true
 CONFIG_EAP_PEAP                  := true
 CONFIG_EAP_MD5                   := true
 CONFIG_EAP_MSCHAPV2              := true
-CONFIG_EAP_OTP                   := true
-CONFIG_EAP_GTC                   := true
 CONFIG_EAP_SIM                   := true
 CONFIG_EAP_LEAP                  := true
 CONFIG_EAP_PSK                   := true
 CONFIG_EAP_AKA                   := true
-CONFIG_EAP_AKA_PRIME             := true
-CONFIG_EAP_SIM_COMMON            := true
-CONFIG_EAP_FAST                  := true
-CONFIG_EAP_PAX                   := true
-CONFIG_EAP_SAKE                  := true
-CONFIG_EAP_GPSK                  := true
 CONFIG_EAP_PWD                   := true
-CONFIG_EAP_EKE                   := true
 CONFIG_EAP_IKEV2                 := true
-CONFIG_EAP_TNC                   := true
 
 # Webkit
 ENABLE_WEBGL := true
