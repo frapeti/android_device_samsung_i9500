@@ -136,6 +136,7 @@ enum {
     /* HDMI should display this buffer as S3D SBS LR/RL*/
     GRALLOC_USAGE_PRIVATE_SBS_LR        = 0x00400000,
     GRALLOC_USAGE_PRIVATE_SBS_RL        = 0x00200000,
+    GRALLOC_USAGE_PRIVATE_NONSECURE     = 0x02000000,
     /* HDMI should display this buffer as 3D TB LR/RL*/
     GRALLOC_USAGE_PRIVATE_TB_LR         = 0x00100000,
     GRALLOC_USAGE_PRIVATE_TB_RL         = 0x00080000,
