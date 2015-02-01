@@ -161,10 +161,6 @@ PRODUCT_PACKAGES += \
 PRODUCT_PACKAGES += \
     SamsungServiceMode
 
-# Torch
-PRODUCT_PACKAGES += \
-    Torch
-
 # Wifi
 PRODUCT_PACKAGES += \
     libnetcmdiface \
