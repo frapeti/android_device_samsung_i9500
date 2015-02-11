@@ -18,5 +18,6 @@
 #define _BDROID_BUILDCFG_H
 
 #define BTM_DEF_LOCAL_NAME   "GT-I9500"
+#define BTIF_MAX_PCM_ITER_NUM_PER_TICK  20
 
 #endif
