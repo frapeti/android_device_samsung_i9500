@@ -920,10 +920,10 @@ static int out_set_parameters(struct audio_stream *stream, const char *kvpairs)
 
     ret = str_parms_get_str(parms, AUDIO_PARAMETER_STREAM_ROUTING,
                             value, sizeof(value));
+    pthread_mutex_lock(&adev->lock);
+    pthread_mutex_lock(&out->lock);                        
     if (ret >= 0) {
         val = atoi(value);
-        pthread_mutex_lock(&adev->lock);
-        pthread_mutex_lock(&out->lock);
         if (((adev->out_device) != val) && (val != 0)) {
             /* force output standby to stop SCO pcm stream if needed */
             if ((val & AUDIO_DEVICE_OUT_ALL_SCO) ^
@@ -977,7 +977,7 @@ static char * out_get_parameters(const struct audio_stream *stream, const char *
             i++;
         }
         str_parms_add_str(reply, AUDIO_PARAMETER_STREAM_SUP_CHANNELS, value);
-        str = strdup(str_parms_to_str(reply));
+        str = str_parms_to_str(reply);
     } else {
         str = strdup(keys);
     }
@@ -1129,17 +1129,17 @@ static int do_in_standby(struct stream_in *in)
 static int in_standby(struct audio_stream *stream)
 {
     struct stream_in *in = (struct stream_in *)stream;
-    int ret;
+    
 
     pthread_mutex_lock(&in->dev->lock);
     pthread_mutex_lock(&in->lock);
 
-    ret = do_in_standby(in);
+    do_in_standby(in);
 
-    pthread_mutex_unlock(&in->lock);
     pthread_mutex_unlock(&in->dev->lock);
+    pthread_mutex_unlock(&in->lock);
 
-    return ret;
+    return 0;
 }
 
 static int in_dump(const struct audio_stream *stream, int fd)
@@ -1252,18 +1252,16 @@ static ssize_t in_read(struct audio_stream_in *stream, void* buffer,
      * executing in_set_parameters() while holding the hw device
      * mutex
      */
-    pthread_mutex_lock(&adev->lock);
+   
     pthread_mutex_lock(&in->lock);
     if (in->standby) {
+        pthread_mutex_lock(&adev->lock);
         ret = start_input_stream(in);
-        if (ret == 0)
-            in->standby = 0;
-    }
-    pthread_mutex_unlock(&adev->lock);
-
+        pthread_mutex_unlock(&adev->lock);
     if (ret < 0)
         goto exit;
-
+        in->standby = false;
+  }
     /*if (in->num_preprocessors != 0)
         ret = process_frames(in, buffer, frames_rq);
       else */
@@ -1420,7 +1418,7 @@ static void adev_close_output_stream(struct audio_hw_device *dev,
     out_standby(&stream->common);
     adev = (struct audio_device *)dev;
     pthread_mutex_lock(&adev->lock);
-    for (type = 0; type < OUTPUT_TOTAL; type++) {
+    for (type = 0; type < OUTPUT_TOTAL; ++type) {
         if (adev->outputs[type] == (struct stream_out *) stream) {
             adev->outputs[type] = NULL;
             break;
