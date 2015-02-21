@@ -133,6 +133,7 @@ struct audio_device {
     audio_devices_t out_device;
     audio_devices_t in_device;
     bool mic_mute;
+    bool volume_boost;
     struct audio_route *ar;
     audio_source_t input_source;
     int cur_route_id;     /* current route ID: combination of input source
@@ -563,29 +564,25 @@ static void adev_set_wb_amr_callback(void *data, int enable)
 
 static void adev_set_call_audio_path(struct audio_device *adev)
 {
+
     enum ril_audio_path device_type;
-    enum ril_extra_volume extra_volume;
 
     switch(adev->out_device) {
 
         case AUDIO_DEVICE_OUT_SPEAKER:
             device_type = SOUND_AUDIO_PATH_SPEAKER;
-            extra_volume = ORIGINAL_PATH;
             break;
 
         case AUDIO_DEVICE_OUT_EARPIECE:
             device_type = SOUND_AUDIO_PATH_EARPIECE;
-            extra_volume = ORIGINAL_PATH;
             break;
 
         case AUDIO_DEVICE_OUT_WIRED_HEADSET:
             device_type = SOUND_AUDIO_PATH_HEADSET;
-            extra_volume = ORIGINAL_PATH;
             break;
 
         case AUDIO_DEVICE_OUT_WIRED_HEADPHONE:
             device_type = SOUND_AUDIO_PATH_HEADPHONE;
-            extra_volume = ORIGINAL_PATH;
             break;
 
         case AUDIO_DEVICE_OUT_BLUETOOTH_SCO:
@@ -593,24 +590,21 @@ static void adev_set_call_audio_path(struct audio_device *adev)
         case AUDIO_DEVICE_OUT_BLUETOOTH_SCO_CARKIT:
             if (adev->bluetooth_nrec) {
                 device_type = SOUND_AUDIO_PATH_BLUETOOTH;
-                extra_volume = ORIGINAL_PATH;
             } else {
                 device_type = SOUND_AUDIO_PATH_BLUETOOTH_NO_NR;
-                extra_volume = ORIGINAL_PATH;
             }
             break;
 
         default:
             /* if output device isn't supported, use handset by default */
             device_type = SOUND_AUDIO_PATH_EARPIECE;
-            extra_volume = ORIGINAL_PATH;
             break;
     }
 
     ALOGV("%s: ril_set_call_audio_path(%d)", __func__, device_type);
 
     /* TODO: Figure out which devices need EXTRA_VOLUME_PATH set */
-    ril_set_call_audio_path(&adev->ril, device_type, extra_volume);
+    ril_set_call_audio_path(&adev->ril, device_type, EXTRA_VOLUME_PATH);
 }
 
 /* Helper functions */
@@ -964,6 +958,9 @@ static int out_set_parameters(struct audio_stream *stream, const char *kvpairs)
 
 static char * out_get_parameters(const struct audio_stream *stream, const char *keys)
 {
+
+    ALOGV("%s: key: ", __func__, keys);
+
     struct stream_out *out = (struct stream_out *)stream;
     struct str_parms *query = str_parms_create_str(keys);
     char *str;
@@ -1445,8 +1442,46 @@ static void adev_close_output_stream(struct audio_hw_device *dev,
     free(stream);
 }
 
+static int adev_set_voice_volume(struct audio_hw_device *dev, float volume)
+{
+    struct audio_device *adev = (struct audio_device *)dev;
+
+    adev->voice_volume = volume;
+
+    if (adev->mode == AUDIO_MODE_IN_CALL) {
+        enum ril_sound_type sound_type;
+
+        switch (adev->out_device) {
+
+            case AUDIO_DEVICE_OUT_SPEAKER:
+                sound_type = SOUND_TYPE_SPEAKER;
+                break;
+
+            case AUDIO_DEVICE_OUT_WIRED_HEADSET:
+            case AUDIO_DEVICE_OUT_WIRED_HEADPHONE:
+                sound_type = SOUND_TYPE_HEADSET;
+                break;
+
+            case AUDIO_DEVICE_OUT_BLUETOOTH_SCO:
+            case AUDIO_DEVICE_OUT_ALL_SCO:
+                sound_type = SOUND_TYPE_BTVOICE;
+                break;
+
+            default:
+                sound_type = SOUND_TYPE_VOICE;
+        }
+
+        ril_set_call_volume(&adev->ril, sound_type, volume);
+    }
+
+    return 0;
+}
+
 static int adev_set_parameters(struct audio_hw_device *dev, const char *kvpairs)
 {
+
+    ALOGV("%s: kvpairs: %s", __func__, kvpairs);
+
     struct audio_device *adev = (struct audio_device *)dev;
     struct str_parms *parms;
     char *str;
@@ -1454,6 +1489,22 @@ static int adev_set_parameters(struct audio_hw_device *dev, const char *kvpairs)
     int ret;
 
     parms = str_parms_create_str(kvpairs);
+
+
+    ALOGV("%s: adev->voice_volume: %f", __func__, adev->voice_volume);
+
+    if (strcmp(kvpairs, "volume_boost=on") == 0) {
+        // increase voice call volume
+        adev->volume_boost = true;
+        return adev_set_voice_volume(&adev->hw_device, 1.0f);
+    }
+
+    if (strcmp(kvpairs, "volume_boost=off") == 0) {
+        // set original call volume
+        adev->volume_boost = false;
+        return adev_set_voice_volume(&adev->hw_device, 0.7f);
+    }
+
 #if 0
     ret = str_parms_get_str(parms, AUDIO_PARAMETER_KEY_TTY_MODE, value, sizeof(value));
     if (ret >= 0) {
@@ -1506,46 +1557,24 @@ static int adev_set_parameters(struct audio_hw_device *dev, const char *kvpairs)
 static char * adev_get_parameters(const struct audio_hw_device *dev,
                                   const char *keys)
 {
+
+    struct audio_device *adev = (struct audio_device *)dev;
+
+    ALOGV("%s: key: %s", __func__, keys);
+
+    if (strcmp(keys, "volume_boost") == 0) {
+        if (adev->volume_boost) {
+            return strdup("volume_boost=on");
+        } else {
+            return strdup("volume_boost=off");
+        }
+    }
+
     return strdup("");
 }
 
 static int adev_init_check(const struct audio_hw_device *dev)
 {
-    return 0;
-}
-
-static int adev_set_voice_volume(struct audio_hw_device *dev, float volume)
-{
-    struct audio_device *adev = (struct audio_device *)dev;
-
-    adev->voice_volume = volume;
-
-    if (adev->mode == AUDIO_MODE_IN_CALL) {
-        enum ril_sound_type sound_type;
-
-        switch (adev->out_device) {
-
-            case AUDIO_DEVICE_OUT_SPEAKER:
-                sound_type = SOUND_TYPE_SPEAKER;
-                break;
-
-            case AUDIO_DEVICE_OUT_WIRED_HEADSET:
-            case AUDIO_DEVICE_OUT_WIRED_HEADPHONE:
-                sound_type = SOUND_TYPE_HEADSET;
-                break;
-
-            case AUDIO_DEVICE_OUT_BLUETOOTH_SCO:
-            case AUDIO_DEVICE_OUT_ALL_SCO:
-                sound_type = SOUND_TYPE_BTVOICE;
-                break;
-
-            default:
-                sound_type = SOUND_TYPE_VOICE;
-        }
-
-        ril_set_call_volume(&adev->ril, sound_type, volume);
-    }
-
     return 0;
 }
 
@@ -1791,7 +1820,7 @@ static int adev_open(const hw_module_t* module, const char* name,
     adev->es325_mode = ES325_MODE_LEVEL;
 
     adev->mode = AUDIO_MODE_NORMAL;
-    adev->voice_volume = 1.0f;
+    adev->voice_volume = 0.7f;
 
     /* RIL */
     ril_open(&adev->ril);
