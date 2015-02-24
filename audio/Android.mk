@@ -25,6 +25,7 @@ LOCAL_SRC_FILES := audio_hw.c ril_interface.c
 
 LOCAL_C_INCLUDES += \
 	external/tinyalsa/include \
+	hardware/samsung_slsi/exynos5/include \
 	$(call include-path-for, audio-effects) \
 	$(call include-path-for, audio-utils) \
 	$(call include-path-for, audio-route)

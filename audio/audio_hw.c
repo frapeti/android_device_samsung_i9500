@@ -27,6 +27,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <sys/time.h>
+#include <fcntl.h>
 
 #include <cutils/log.h>
 #include <cutils/properties.h>
@@ -34,6 +35,9 @@
 
 #include <hardware/audio.h>
 #include <hardware/hardware.h>
+
+#include <linux/videodev2.h>
+#include <videodev2_exynos_media.h>
 
 #include <system/audio.h>
 
@@ -324,6 +328,30 @@ static void adev_set_call_audio_path(struct audio_device *adev);
  * stream_out mutexes.
  */
 
+static int enable_hdmi_audio(int enable)
+{
+    int fd;
+    int ret;
+    struct v4l2_control ctrl;
+
+    fd = open("/dev/video16", O_RDWR);
+    if (fd < 0) {
+        ALOGE("cannot open /dev/video16 (%d)", fd);
+        return -ENOSYS;
+    }
+
+    ctrl.id = V4L2_CID_TV_ENABLE_HDMI_AUDIO;
+    ctrl.value = !!enable;
+    ret = ioctl(fd, VIDIOC_S_CTRL, &ctrl);
+
+    if (ret < 0)
+        ALOGE("V4L2_CID_TV_ENABLE_HDMI_AUDIO ioctl error (%d)", errno);
+
+    close(fd);
+
+    return ret;
+}
+
 static void select_devices(struct audio_device *adev)
 {
     int output_device_id = get_output_device_id(adev->out_device);
@@ -334,6 +362,8 @@ static void select_devices(struct audio_device *adev)
     int new_es325_preset = -1;
 
     audio_route_reset(adev->ar);
+
+    enable_hdmi_audio(adev->out_device & AUDIO_DEVICE_OUT_AUX_DIGITAL);
 
     new_route_id = (1 << (input_source_id + OUT_DEVICE_CNT)) + (1 << output_device_id);
     if ((new_route_id == adev->cur_route_id) && (adev->es325_mode == adev->es325_new_mode))
@@ -397,6 +427,8 @@ static void select_devices(struct audio_device *adev)
         }
 
     }
+
+    enable_hdmi_audio(adev->out_device & AUDIO_DEVICE_OUT_AUX_DIGITAL);
 
     audio_route_update_mixer(adev->ar);
 
